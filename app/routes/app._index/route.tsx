@@ -22,6 +22,7 @@ import ScrollNotice from "~/components/ScrollNotice";
 import { LoaderFunctionArgs } from "@remix-run/node";
 // import ProgressingCard from "~/components/progressingCard";
 import AnalyticsCard from "./components/AnalyticsCard";
+import ImageTranslation from "./components/ImageTranslation";
 import { authenticate } from "~/shopify.server";
 import WelcomeCard from "./components/welcomeCard";
 // import useReport from "scripts/eventReport";
@@ -37,15 +38,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const language =
     request.headers.get("Accept-Language")?.split(",")[0] || "en";
   const languageCode = language.split("-")[0];
-  const scopes = adminAuthResult.session.scope
-    ? adminAuthResult.session.scope.split(",")
-    : [];
-  const optionalScopes = process.env.OPTIONAL_SCOPES;
-  const missScopes = optionalScopes
-    ?.split(",")
-    .filter((s) => !scopes.includes(s)) as string[];
-
-  const hasRequiresScopes = missScopes?.length === 0;
   if (languageCode === "zh" || languageCode === "zh-CN") {
     return {
       language,
@@ -55,8 +47,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         .SHOPIFY_CIWI_SWITCHER_THEME_ID as string,
       server: process.env.SERVER_URL,
       shop: shop,
-      hasRequiresScopes,
-      missScopes,
     };
   } else {
     return {
@@ -67,8 +57,6 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         .SHOPIFY_CIWI_SWITCHER_THEME_ID as string,
       server: process.env.SERVER_URL,
       shop: shop,
-      hasRequiresScopes,
-      missScopes,
     };
   }
 };
@@ -81,8 +69,6 @@ const Index = () => {
     shop,
     ciwiSwitcherBlocksId,
     ciwiSwitcherId,
-    hasRequiresScopes,
-    missScopes,
   } = useLoaderData<typeof loader>();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -100,32 +86,9 @@ const Index = () => {
 
   const fetcher = useFetcher<any>();
   const themeFetcher = useFetcher<any>();
-  const graphqlFetcher = useFetcher<any>();
-  const findWebPixelFetcher = useFetcher<any>();
-
-  // const { reportClick, report } = useReport();
-  useEffect(() => {
+  useEffect(()=>{
     setIsLoading(false);
-    themeFetcher.submit(
-      {
-        theme: JSON.stringify(true),
-      },
-      {
-        method: "post",
-        action: "/app/currency",
-      },
-    );
-    fetcher.submit(
-      {
-        log: `${shop} 目前在主页面, 页面语言为${language}`,
-      },
-      {
-        method: "POST",
-        action: "/log",
-      },
-    );
-  }, []);
-
+  },[])
   useEffect(() => {
     if (themeFetcher.data) {
       const switcherData =
@@ -212,20 +175,6 @@ const Index = () => {
   const handleReportCiwiHelpCenter = () => {
     // reportClick("dashboard_footer_help_center");
   };
-  const navigateToHelpSwitchCurrency = () => {
-    // reportClick("dashboard_currency_guide");
-    window.open(
-      "https://ciwi.bogdatech.com/help/frequently-asked-question/how-to-set-up-multi-currency-pricing-on-your-shopify-store%ef%bc%9f/",
-      "_blank",
-    );
-  };
-  const navigateToSwitchCurrencyDetail = () => {
-    // reportClick("dashboard_currency_view_detail");
-    window.open(
-      "https://ciwi.bogdatech.com/help/frequently-asked-question/how-to-enable-the-app-from-shopify-theme-customization-to-apply-the-language-currency-exchange-switcher/",
-      "_blank",
-    );
-  };
   const navigateToLanguage = () => {
     navigate("/app/language");
     fetcher.submit(
@@ -267,18 +216,6 @@ const Index = () => {
     );
   };
 
-  useEffect(() => {
-    if (graphqlFetcher.data) {
-      console.log(graphqlFetcher.data);
-    } else {
-    }
-  }, [graphqlFetcher.data]);
-  useEffect(() => {
-    if (findWebPixelFetcher.data) {
-      console.log(findWebPixelFetcher.data);
-    } else {
-    }
-  }, [findWebPixelFetcher.data]);
   return (
     <Page>
       <TitleBar title={t("Dashboard")} />
@@ -297,197 +234,42 @@ const Index = () => {
         }}
       >
         <Space direction="vertical" size="middle" style={{ display: "flex" }}>
-          <AnalyticsCard
-            hasRequiresScopes={hasRequiresScopes}
-            missScopes={missScopes}
+          {/* <AnalyticsCard
             isLoading={isLoading}
-          ></AnalyticsCard>
-          {/* <ProgressingCard shop={shop} server={server || ""} /> */}
+          ></AnalyticsCard> */}
           <WelcomeCard
             switcherOpen={switcherOpen}
             blockUrl={blockUrl}
             shop={shop}
             // handleReload={handleReload}
           />
-          <Row gutter={16}>
-            <Col xs={24} sm={24} md={12}>
-              <Card
-                style={{
-                  height: "100%",
-                }}
-                styles={{
-                  body: {
-                    height: "100%",
-                    padding: "12px 24px",
-                  },
-                }}
-              >
-                <Space direction="vertical" style={{ display: "flex" }}>
-                  <Text strong>{t("transLanguageCard3.title")}</Text>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "row-reverse",
-                      gap: "10px",
-                      justifyContent: "flex-start",
-                    }}
-                  >
-                    <img
-                      src="https://ciwi-1327177217.cos.ap-singapore.myqcloud.com/safeicon-min.png"
-                      alt="safe"
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        borderRadius: "4px",
-                      }}
-                    />
-                    <div style={{ marginRight: "auto" }}>
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: t("transLanguageCard3.description1"),
-                        }}
-                      />
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: t("transLanguageCard3.description2"),
-                        }}
-                      />
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: t("transLanguageCard3.description3"),
-                        }}
-                      />
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: t("transLanguageCard3.description4"),
-                        }}
-                      />
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: t("transLanguageCard3.description5"),
-                        }}
-                      />
-                    </div>
-                  </div>
-                </Space>
-              </Card>
-            </Col>
-            <Col xs={24} sm={24} md={12}>
-              <Card
-                style={{
-                  height: "100%",
-                }}
-                styles={{
-                  body: {
-                    height: "100%",
-                    padding: "12px 24px",
-                  },
-                }}
-              >
-                <Flex
-                  vertical
-                  style={{ height: "100%" }}
-                  justify="space-between"
-                >
-                  <Space direction="vertical" style={{ display: "flex" }}>
-                    <Text strong>{t("transCurrencyCard1.title")}</Text>
-                    <Text>{t("transCurrencyCard1.description")}</Text>
-                  </Space>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-start",
-                      bottom: "0",
-                    }}
-                  >
-                    {isLoading ? (
-                      <Skeleton.Button active />
-                    ) : (
-                      <Button
-                        type="default"
-                        onClick={() => navigateToCurrency()}
-                      >
-                        {t("transCurrencyCard1.button")}
-                      </Button>
-                    )}
-                  </div>
-                </Flex>
-              </Card>
-            </Col>
-          </Row>
+          <ImageTranslation />
         </Space>
-        <Space direction="vertical" size="small" style={{ display: "flex" }}>
-          <div style={{ paddingLeft: "8px" }}>
-            <Title level={5}>{t("dashboard.title3")}</Title>
-          </div>
-          <Card
-            styles={{
-              body: {
-                padding: "12px 24px",
-              },
-            }}
-          >
-            <Space
-              direction="vertical"
-              size="small"
-              style={{ display: "flex" }}
-            >
-              <Title level={5}>{t("planCard.title")}</Title>
-              <Flex justify="space-between" align="center">
-                <Text>{t("planCard.description")}</Text>
-                {isLoading ? (
-                  <Skeleton.Button active />
-                ) : (
-                  <Button onClick={handleCommitRequest}>
-                    {t("planCard.button")}
-                  </Button>
-                )}
-              </Flex>
-
-              <Table columns={columns} dataSource={data} pagination={false} />
-            </Space>
-          </Card>
-          {/* <Row gutter={16}>
-            <Col xs={24} sm={24} md={12}>
-              <ContactCard
-                isChinese={isChinese}
-                onClick={() => {
-                  reportClick("dashboard_contact_us");
-                  handleContactSupport();
-                }}
-              />
-            </Col>
-            <Col xs={24} sm={24} md={12}>
-              <UserGuideCard />
-            </Col>
-          </Row> */}
-          {/* <PreviewCard shop={shop} /> */}
-        </Space>
-        <Text
-          style={{
-            display: "flex", // 使用 flexbox 来布局
-            justifyContent: "center", // 水平居中
-          }}
-        >
-          {t("Learn more in")}
-          <Link
-            to="https://ciwi.ai/help-center/ShopifyApp/about-ciwi-ai-translator-shopify-app"
-            target="_blank"
-            style={{ margin: "0 5px" }}
-            onClick={handleReportCiwiHelpCenter}
-          >
-            {t("Ciwi Help Center")}
-          </Link>
-          {t("by")}
-          <Link
-            to={"https://ciwi.ai"}
-            target="_blank"
-            style={{ margin: "0 5px" }}
-          >
-            {t("Ciwi.ai")}
-          </Link>
-        </Text>
       </Space>
+      <Text
+        style={{
+          display: "flex", // 使用 flexbox 来布局
+          justifyContent: "center", // 水平居中
+        }}
+      >
+        {t("Learn more in")}
+        <Link
+          to="https://ciwi.ai/help-center/ShopifyApp/about-ciwi-ai-translator-shopify-app"
+          target="_blank"
+          style={{ margin: "0 5px" }}
+          onClick={handleReportCiwiHelpCenter}
+        >
+          {t("Ciwi Help Center")}
+        </Link>
+        {t("by")}
+        <Link
+          to={"https://ciwi.ai"}
+          target="_blank"
+          style={{ margin: "0 5px" }}
+        >
+          {t("Ciwi.ai")}
+        </Link>
+      </Text>
     </Page>
   );
 };

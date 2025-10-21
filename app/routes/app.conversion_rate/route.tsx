@@ -20,25 +20,17 @@ import {
   Box,
 } from "@shopify/polaris";
 import { Flex, Row, Skeleton, Typography, Button, Divider, Empty } from "antd";
-import {
-  ArrowLeftIcon,
-} from "@shopify/polaris-icons";
-import {
-  AppstoreOutlined,
-  BarsOutlined,
-} from "@ant-design/icons";
+import { ArrowLeftIcon } from "@shopify/polaris-icons";
+import { AppstoreOutlined, BarsOutlined } from "@ant-design/icons";
 import ScrollNotice from "~/components/ScrollNotice";
 import { authenticate } from "../../shopify.server";
-// import {  BarChart } from "@shopify/polaris-viz";
-// import "@shopify/polaris-viz/build/esm/styles.css";
 import { useFetcher } from "@remix-run/react";
-import { GetConversionData, GetStoreLanguage } from "~/api/JavaServer";
+import { GetConversionData } from "../../api/JavaServer";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "@remix-run/react";
-// import useReport from "scripts/eventReport";
+import useReport from "scripts/eventReport";
 import LineChartECharts from "./components/LineChartECharts";
 const { Title } = Typography;
-// import { useNavigate } from "react-router";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const adminAuthResult = await authenticate.admin(request);
@@ -71,13 +63,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         const data = (await mutationResponse.json()) as any;
         let storeLanguage = [] as string[];
         let defaultLanguage = "en";
-        console.log("jdiasjdiasjdi", data.data.shopLocales);
-
         if (data.data.shopLocales.length > 0) {
           data.data.shopLocales.forEach((item: any) => {
-            storeLanguage.push(item.locale);
+            // storeLanguage.push(item.locale);
             if (item.primary) {
-              defaultLanguage = item.name;
+              defaultLanguage = item.locale;
             }
           });
         }
@@ -91,7 +81,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           storeLanguage: updatedStoreLanguage,
           dayData: days,
         });
-        return { ...response, defaultLanguage };
+        return json({ ...response, defaultLanguage });
       } catch (error) {
         console.log("get polarisViz data failed", error);
         return {
@@ -111,7 +101,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 const Index = () => {
-//   const { report } = useReport();
+  const { report } = useReport();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState<boolean>(false);
@@ -158,74 +148,42 @@ const Index = () => {
     return dates;
   };
   const clickReportDate = (day: number) => {
-    // report(
-    //   { day: day },
-    //   {
-    //     action: "/app", // 默认 action 路径
-    //     method: "post",
-    //     eventType: "click",
-    //   },
-    //   "conversion_rate_filter_date",
-    // );
+    report(
+      { day: day },
+      {
+        action: "/app", // 默认 action 路径
+        method: "post",
+        eventType: "click",
+      },
+      "conversion_rate_filter_date",
+    );
   };
   const clickReportGridColumns = (column: number) => {
-    // report(
-    //   { gridColumns: column },
-    //   {
-    //     action: "/app", // 默认 action 路径
-    //     method: "post",
-    //     eventType: "click",
-    //   },
-    //   "conversion_rate_gridColumns",
-    // );
+    report(
+      { gridColumns: column },
+      {
+        action: "/app", // 默认 action 路径
+        method: "post",
+        eventType: "click",
+      },
+      "conversion_rate_gridColumns",
+    );
   };
-  // useEffect(() => {
-  //   if (chartData.length === 0) return;
-
-  //   const allDates = generateDateRange(selectedDates.start, selectedDates.end);
-  //   console.log(chartData);
-
-  //   const filled = chartData.map((chart: any) => {
-  //     return {
-  //       ...chart,
-  //       data: chart.data.map((series: any) => {
-  //         // 建立一个 key -> value 的 Map
-  //         const valueMap = new Map(
-  //           series.data.map((item: any) => [item.key, item.value]),
-  //         );
-
-  //         // 重新按完整日期数组生成数据
-  //         const alignedData = allDates.map((date) => ({
-  //           key: date,
-  //           value: valueMap.get(date) ?? 0, // 没数据就补 0
-  //         }));
-
-  //         return {
-  //           ...series,
-  //           data: alignedData,
-  //           name: `${formatDate(selectedDates.start)} ~ ${formatDate(selectedDates.end)}`,
-  //         };
-  //       }),
-  //     };
-  //   });
-  //   console.log(filled);
-
-  //   setFilteredChartData(filled);
-  // }, [selectedDates, chartData]);
   useEffect(() => {
     if (chartData.length === 0) return;
-
     const allDates = generateDateRange(selectedDates.start, selectedDates.end);
     const filled = chartData.map((chart: any) => {
       return {
         ...chart,
         language:
-          chart.language === defaultLanguage
+          chart.locale === defaultLanguage
             ? `${chart.language} (${t("Default Language")})`
             : chart.language,
         data: chart.data.map((series: any) => {
           const valueMap = new Map(
-            series.data.map((item: any) => [item.key, item.value]),
+            Array.isArray(series.data)
+              ? series.data.map((item: any) => [item.key, item.value])
+              : [],
           );
 
           const alignedData = allDates.map((date) => ({
@@ -246,8 +204,8 @@ const Index = () => {
 
     // 排序，确保默认语言在第一个
     const sorted = filled.sort((a: any, b: any) => {
-      if (a.language.includes(defaultLanguage)) return -1;
-      if (b.language.includes(defaultLanguage)) return 1;
+      if (a.locale.includes(defaultLanguage)) return -1;
+      if (b.locale.includes(defaultLanguage)) return 1;
       return 0;
     });
 
@@ -292,7 +250,7 @@ const Index = () => {
   function transformData(raw: any) {
     const languageMap: Record<string, string> = {
       en: "English",
-      ja: "日本語",
+      ja: "Japanese",
       "zh-hans": "简体中文",
       "zh-TW": "繁體中文",
       fr: "Français",
@@ -386,9 +344,9 @@ const Index = () => {
     const parsed = typeof raw === "string" ? JSON.parse(raw) : (raw ?? {});
 
     return Object.entries(parsed).map(([lang, dates]) => {
-      const language = languageMap[lang] || lang;
-
-      const sortedDates = Object.keys(dates as any).sort();
+      const language = languageMap[lang] || lang; // 显示用
+      const eventsByDate = typeof dates === "object" && dates ? dates : {};
+      const sortedDates = Object.keys(eventsByDate).sort();
       const dateRangeName = getDateRangeName(sortedDates);
 
       const dateData = sortedDates.map((dateStr) => {
@@ -396,7 +354,6 @@ const Index = () => {
         const exposure = Number(events.page_viewed || 0);
         const clicks = Number(events.product_added_to_cart || 0);
 
-        // 转换率（百分比）
         const conversionRate =
           exposure > 0 ? Math.min((clicks / exposure) * 100, 100) : 0;
 
@@ -407,7 +364,8 @@ const Index = () => {
       });
 
       return {
-        language,
+        locale: lang, // ✅ 新增 locale
+        language: lang, // ✅ 显示名
         data: [
           {
             name: dateRangeName,
@@ -420,12 +378,16 @@ const Index = () => {
 
   useEffect(() => {
     if (polarisVizDataFetcher.data) {
-      if (polarisVizDataFetcher.data.response) {
+      console.log(polarisVizDataFetcher.data);
+      
+      if (polarisVizDataFetcher.data.success) {
         setChartData(transformData(polarisVizDataFetcher.data.response));
         setDefaultLanguage(polarisVizDataFetcher.data?.defaultLanguage);
         setFilteredChartData(
           transformData(polarisVizDataFetcher.data.response),
         );
+      } else {
+        setGridColumns(1);
       }
       setIsLoading(false);
     }
@@ -446,7 +408,7 @@ const Index = () => {
       {/* 筛选器 */}
       <ScrollNotice
         text={t(
-          "Welcome to our app! If you have any questions, feel free to email us at support@ciwi.ai, and we will respond as soon as possible."
+          "Welcome to our app! If you have any questions, feel free to email us at support@ciwi.ai, and we will respond as soon as possible.",
         )}
       />
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -571,7 +533,9 @@ const Index = () => {
                       marginTop: "16px",
                     }}
                   >
-                    {chart.data && chart.data.length > 0 && ready ? (
+                    {Array.isArray(chart.data) &&
+                    chart.data.length > 0 &&
+                    ready ? (
                       <LineChartECharts data={chart.data} height={300} />
                     ) : (
                       <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />

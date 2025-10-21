@@ -15,53 +15,41 @@ import {
 import { useNavigate } from "@remix-run/react";
 // import { useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
-// import useReport from "scripts/eventReport";
+import useReport from "scripts/eventReport";
 // import store from "~/store";
-// import { UseSelector } from "react-redux";
 // import { RootState } from "~/store";
 const { Text, Title } = Typography;
-
-interface LoadingItem {
-  loading: boolean;
-}
-interface loadingGather {
-  translationScore: LoadingItem;
-  unTranslated: LoadingItem;
-  conversionRate: LoadingItem;
-}
-const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
-//   const { reportClick } = useReport();
+const AnalyticsCard = ({ isLoading }: any) => {
+  const { reportClick } = useReport();
   const navigate = useNavigate(); // 统一使用小写 navigate（React Router 规范）
   const { t } = useTranslation();
   const [isModalVisible, setIsModalVisible] = useState(false);
   const graphqlFetcher = useFetcher<any>();
   const queryWebPixelFetcher = useFetcher<any>();
   const [configCreateWebPixel, setConfigPixel] = useState<boolean>(false);
-  const [showRequireScopeBtn, setShowRequireScopeBtn] =
-    useState(!hasRequiresScopes);
+  const [showRequireScopeBtn, setShowRequireScopeBtn] = useState(false);
   const showModal = () => {
     setIsModalVisible(true);
   };
-  const [loadingGather, setLoadingGather] = useState<loadingGather>({
-    translationScore: { loading: false },
-    unTranslated: { loading: true },
-    conversionRate: { loading: true },
-  });
-//   const { plan, isNew } = useSelector((state: any) => state.userConfig);
-  const Schedule = [
-    "Free Plan",
-    "Free Plan",
-    "Free Flan",
-    "Basic Plan",
-    "Pro Plan",
-    "Premium Plan",
-  ];
-  const getPlanName = (planId: number, isNew: boolean) => {
-    if (isNew && planId >= 1 && planId <= 3) {
-      return "免费试用（5天）";
-    }
-    return Schedule[planId - 1];
-  };
+  const [missScopes, setMissScopes] = useState([
+    "read_customer_events",
+    "write_pixels",
+  ]);
+  // const { plan, isNew } = useSelector((state: any) => state.userConfig);
+  // const Schedule = [
+  //   "Free Plan",
+  //   "Free Plan",
+  //   "Free Flan",
+  //   "Basic Plan",
+  //   "Pro Plan",
+  //   "Premium Plan",
+  // ];
+  // const getPlanName = (planId: number, isNew: boolean) => {
+  //   if (isNew && planId >= 1 && planId <= 3) {
+  //     return t("5 Days Free Trial");
+  //   }
+  //   return Schedule[planId - 1];
+  // };
   const translationScoreFetcher = useFetcher<any>();
   const unTranslatedFetcher = useFetcher<any>();
   const conversionCateFetcher = useFetcher<any>();
@@ -101,12 +89,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
     "SELLING_PLAN",
     "SELLING_PLAN_GROUP",
   ];
-  const displayValue =
-    conversionRate != null
-      ? `+${conversionRate}%`
-      : localConversionRate != null
-        ? `+${localConversionRate}%`
-        : "-";
 
   function calculateConversionRate(
     resp: Record<string, Record<string, Record<string, any>>>,
@@ -148,9 +130,12 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
     try {
       setIsModalVisible(false);
       const response = await shopify.scopes.request(missScopes as string[]);
-      shopify.toast.show(t("Authorization successful"));
-
-      await createWebPixel();
+      if (response.result === "granted-all") {
+        shopify.toast.show(t("Authorization successful"));
+        await createWebPixel();
+      } else if (response.result === "declined-all") {
+        checkScopes();
+      }
     } catch (error: any) {
       shopify.toast.show(t("Authorization failed"));
     }
@@ -158,7 +143,7 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
   const handleNavigateDetail = () => {
     setImproveBtnState(true);
     navigate("/app/translate_report");
-    // reportClick("dashboard_optimize_translation_score");
+    reportClick("dashboard_optimize_translation_score");
   };
   const handleCancel = () => {
     setIsModalVisible(false);
@@ -198,6 +183,12 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
       action: "/app",
     });
   };
+  const handleCancelScope = async () => {
+    const grand = await shopify.scopes.revoke(missScopes);
+    console.log("grand: ", grand);
+
+    setShowRequireScopeBtn(false);
+  };
 
   const handleConfigScopes = async () => {
     setNavigateToRateState(true);
@@ -210,8 +201,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
 
       if (!configCreateWebPixel) {
         await createWebPixel(); // 保持 loading，直到创建完成
-      }
-      if (!configCreateWebPixel) {
         return;
       }
 
@@ -219,45 +208,43 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
     } catch (e) {
       setNavigateToRateState(false); // 出错才恢复按钮
     }
-    // reportClick("dashboard_conversion_detail");
+    reportClick("dashboard_conversion_detail");
   };
 
   // 组件加载时自动查询 Web Pixel
   useEffect(() => {
-    const translateReportData = localStorage.getItem(
-      "translate_report_score",
-    ) as any;
-    const localUnTranslateWords = localStorage.getItem(
-      "local_untranslate_words",
-    ) as any;
-    const localConversionRate = localStorage.getItem(
-      "local_conversion_rate",
-    ) as any;
-    if (queryWebPixelFetcher.state === "idle" && !queryWebPixelFetcher.data) {
-      queryWebPixel();
-    }
-    if (localUnTranslateWords) {
-      setLocalUnTranslateWords(JSON.parse(localUnTranslateWords));
-    }
-    if (localConversionRate) {
-      setLocalConversionRate(JSON.parse(localConversionRate));
-    }
-    if (translateReportData) {
-      setTranslateData(translateReportData);
-    } else {
-      // 初始化获取翻译质量的分数
-      const formData = new FormData();
-      formData.append("translationScore", JSON.stringify({}));
-      translationScoreFetcher.submit(formData, {
-        method: "post",
-        action: "/app/translate_report",
-      });
-      setLoadingGather((prev) => ({
-        ...prev,
-        translationScore: {
-          loading: true,
-        },
-      }));
+    try {
+      const translateReportData = localStorage.getItem(
+        "translate_report_score",
+      ) as any;
+      const localUnTranslateWords = localStorage.getItem(
+        "local_untranslate_words",
+      ) as any;
+      const localConversionRate = localStorage.getItem(
+        "local_conversion_rate",
+      ) as any;
+      if (queryWebPixelFetcher.state === "idle" && !queryWebPixelFetcher.data) {
+        queryWebPixel();
+      }
+      if (localUnTranslateWords) {
+        setLocalUnTranslateWords(JSON.parse(localUnTranslateWords));
+      }
+      if (localConversionRate) {
+        setLocalConversionRate(JSON.parse(localConversionRate));
+      }
+      if (translateReportData) {
+        setTranslateData(JSON.parse(translateReportData));
+      } else {
+        // 初始化获取翻译质量的分数
+        const formData = new FormData();
+        formData.append("translationScore", JSON.stringify({}));
+        translationScoreFetcher.submit(formData, {
+          method: "post",
+          action: "/app/translate_report",
+        });
+      }
+    } catch (error) {
+      console.error("localConversionRate JSON 解析失败", error);
     }
   }, []);
   useEffect(() => {
@@ -284,12 +271,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
   useEffect(() => {
     if (translationScoreFetcher.data && translationScoreFetcher.data.success) {
       setTranslateData(Math.ceil(translationScoreFetcher.data?.response * 100));
-      setLoadingGather((prev) => ({
-        ...prev,
-        translationScore: {
-          loading: false,
-        },
-      }));
       localStorage.setItem(
         "translate_report_score",
         JSON.stringify(Math.ceil(translationScoreFetcher.data?.response * 100)),
@@ -299,12 +280,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
   useEffect(() => {
     if (unTranslatedFetcher.data && unTranslatedFetcher.data.success) {
       // setLoading(false);
-      setLoadingGather((prev) => ({
-        ...prev,
-        unTranslated: {
-          loading: false,
-        },
-      }));
       setUnTranslateWords(unTranslatedFetcher.data?.response);
       localStorage.setItem(
         "local_untranslate_words",
@@ -315,6 +290,7 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
 
   useEffect(() => {
     if (!conversionCateFetcher.data) return;
+    console.log(conversionCateFetcher.data);
     try {
       if (conversionCateFetcher.data.success) {
         let resp = conversionCateFetcher.data.response;
@@ -332,11 +308,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
     } catch (e) {
       console.error("解析 conversionRate 响应失败:", e);
       // setConversionRate(null);
-    } finally {
-      setLoadingGather((prev) => ({
-        ...prev,
-        conversionRate: { loading: false },
-      }));
     }
   }, [conversionCateFetcher.data]);
   // 监听 graphqlFetcher.data（创建响应），如果需要处理错误或其他逻辑
@@ -377,9 +348,9 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
   }, [queryWebPixelFetcher.data]);
   const checkScopes = async () => {
     const { granted } = await shopify.scopes.query();
-    const missingScopes = missScopes.filter(
-      (s: string) => !granted.includes(s),
-    );
+    const missingScopes = Array.isArray(missScopes)
+      ? missScopes.filter((s: string) => !granted.includes(s))
+      : [];
     setShowRequireScopeBtn(missingScopes.length === 0);
   };
   useEffect(() => {
@@ -397,7 +368,7 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
     >
       <Flex justify="space-between" style={{ marginBottom: "10px" }}>
         <Title
-          level={5}
+          level={4}
           style={{ display: "flex", alignItems: "center", fontWeight: 600 }}
         >
           {t("Dashboard")}
@@ -410,9 +381,20 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
             onClick={() => navigate("/app/pricing")}
             style={{ fontSize: "14px", color: "#007F61", cursor: "pointer" }}
           >
-            {getPlanName(plan.id, isNew)}
+            {plan ? getPlanName(plan.id, isNew) : ""}
           </Text>
         )} */}
+        {isLoading ? (
+          <Skeleton.Button active />
+        ) : (
+          <Text
+            strong
+            onClick={() => navigate("/app/pricing")}
+            style={{ fontSize: "14px", color: "#007F61", cursor: "pointer" }}
+          >
+            加载完成
+          </Text>
+        )}
       </Flex>
 
       <Row gutter={[16, 16]}>
@@ -429,7 +411,7 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
             style={{ height: "100%", minWidth: 200 }}
             gap={8}
           >
-            <Text style={{ fontWeight: 500 }}>{t("Translation Score")}</Text>
+            <Text style={{ fontWeight: 500 }}>{t("Translation score")}</Text>
             <Progress
               type="circle"
               percent={translateScoreData ?? 0}
@@ -461,7 +443,6 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
               type="default"
               loading={improveBtnState}
               onClick={handleNavigateDetail}
-              disabled={loadingGather.translationScore.loading || isLoading}
             >
               {t("Check")}
             </Button>
@@ -497,9 +478,8 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
                 type="default"
                 onClick={() => {
                   navigate("/app/language");
-                //   reportClick("dashboard_go_translation");
+                  reportClick("dashboard_go_translation");
                 }}
-                disabled={loadingGather.unTranslated.loading}
               >
                 {t("Translate")}
               </Button>
@@ -520,10 +500,16 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
             <Flex vertical align="center" justify="center" gap="small">
               <div style={{ textAlign: "center" }}>
                 <Statistic
-                  value={displayValue}
+                  value={
+                    conversionRate != null
+                      ? `${conversionRate}%`
+                      : localConversionRate != null
+                        ? `${localConversionRate}%`
+                        : "-"
+                  }
                   valueStyle={{ fontWeight: 500 }}
                 />
-                <Text>{t("Compared to 7 days ago")}</Text>
+                <Text>{t("Average conversion rate over 7 days")}</Text>
               </div>
             </Flex>
             <Button
@@ -533,6 +519,7 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
             >
               {t("Details")}
             </Button>
+            {/* <Button onClick={handleCancelScope}>取消授权</Button> */}
           </Flex>
         </Col>
       </Row>
@@ -551,9 +538,9 @@ const AnalyticsCard = ({ hasRequiresScopes, missScopes, isLoading }: any) => {
             "To track conversion rates across different languages, this app requires:",
           )}
         </p>
-        {/* 建议在这里动态列出 missScopes */}
         <ul>
-          {missScopes?.map((scope: string) => <li key={scope}>{scope}</li>)}
+          {Array.isArray(missScopes) &&
+            missScopes.map((scope: string) => <li key={scope}>{scope}</li>)}
         </ul>
         <p>
           {t(

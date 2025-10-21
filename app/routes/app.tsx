@@ -3,24 +3,32 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "@remix-run/node";
+import { useEffect } from "react";
 import { Link, Outlet, useLoaderData, useRouteError } from "@remix-run/react";
 import { boundary } from "@shopify/shopify-app-remix/server";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { NavMenu } from "@shopify/app-bridge-react";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
 import { authenticate } from "../shopify.server";
-import {GetUnTranslatedWords} from '~/api/JavaServer'
+import { GetUnTranslatedWords, storageTranslateImage } from "~/api/JavaServer";
+import { globalStore } from "~/globalStore";
 export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
+  const adminAuthResult = await authenticate.admin(request);
+  const { shop } = adminAuthResult.session;
 
-  return { apiKey: process.env.SHOPIFY_API_KEY || "" };
+  return {
+    shop,
+    server: process.env.SERVER_URL,
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+  };
 };
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const adminAuthResult = await authenticate.admin(request);
-    const { shop,accessToken } = adminAuthResult.session;
+    console.log("Auth result:", adminAuthResult);
+    const { shop, accessToken } = adminAuthResult.session;
     const { admin } = adminAuthResult;
     const formData = await request.formData();
     const initDataFetcher = JSON.parse(
@@ -31,47 +39,79 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     );
     const findWebPixelId = JSON.parse(formData.get("findWebPixelId") as string);
     const unTranslated = JSON.parse(formData.get("unTranslated") as string);
-
+    const replaceTranslateImage = JSON.parse(
+      formData.get("replaceTranslateImage") as string,
+    );
+    // `#graphql
+    //             query getFiles($first: Int, $after: String, $last: Int, $before: String) {
+    //               files(first: $first, after: $after, last: $last, before: $before) {
+    //                 edges {
+    //                   node {
+    //                     __typename
+    //                     ... on MediaImage {
+    //                       id
+    //                       image {
+    //                         url
+    //                         altText
+    //                       }
+    //                     }
+    //                   }
+    //                 }
+    //                 pageInfo {
+    //                   hasNextPage
+    //                   hasPreviousPage
+    //                   startCursor
+    //                   endCursor
+    //                 }
+    //               }
+    //             }
+    //           `,
     if (initDataFetcher) {
       try {
         const { type, num, cursor } = initDataFetcher;
         const mutationResponse = await admin.graphql(
-          `#graphql
-            query getFiles($first: Int, $after: String, $last: Int, $before: String) {
-              files(first: $first, after: $after, last: $last, before: $before) {
-                edges {
-                  node {
-                    __typename
-                    ... on MediaImage {
-                      id
-                      image {
-                        url
-                        altText
+          `query {
+            products(first: 20) {
+              edges {
+                node {
+                  id
+                  title
+                  images(first: 20) {
+                    edges {
+                      node {
+                        id
+                        url 
                       }
+                    }
+                    pageInfo {
+                      hasNextPage
+                      hasPreviousPage
+                      startCursor
+                      endCursor
                     }
                   }
                 }
-                pageInfo {
-                  hasNextPage
-                  hasPreviousPage
-                  startCursor
-                  endCursor
-                }
               }
-            }
-          `,
-          {
-            variables:
-              type === "next"
-                ? { first: num, after: cursor }
-                : { last: num, before: cursor },
-          },
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+            } 
+          }`,
+          // {
+          //   variables:
+          //     type === "next"
+          //       ? { first: num, after: cursor }
+          //       : { last: num, before: cursor },
+          // },
         );
         const data = await mutationResponse.json();
-        console.log("dasdasdsa: ", data);
+        console.log("dasdasdsa: ", data.data.files);
         return {
           success: true,
-          response: data.data.files,
+          response: data,
         };
       } catch (error) {
         console.log("GraphQL Error: ", error);
@@ -139,7 +179,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           response: data,
         };
       } catch (error) {
-        console.log("getOrderData failed", error);
+        console.log(`${shop} getOrderData failed`, error);
         return {
           success: false,
           response: {
@@ -187,7 +227,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           response: data,
         };
       } catch (error) {
-        console.log("findWebPixel failed", error);
+        console.log(`${shop} findWebPixel failed`, error);
         return {
           success: false,
           errorCode: 10001,
@@ -252,6 +292,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         };
       }
     }
+    if (replaceTranslateImage) {
+      try {
+        const { url, userPicturesDoJson } = replaceTranslateImage;
+        userPicturesDoJson.shopName = shop;
+        const response = await storageTranslateImage({
+          shop,
+          imageUrl: url,
+          userPicturesDoJson,
+        });
+        return response;
+      } catch (error) {
+        console.log("error storageImage", error);
+        return {
+          success: false,
+          errorCode: 10001,
+          errorMsg: "SERVER_ERROR",
+          response: [],
+        };
+      }
+    }
+    
     return {
       success: false,
       message: "Invalid data",
@@ -262,7 +323,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   }
 };
 export default function App() {
-  const { apiKey } = useLoaderData<typeof loader>();
+  const { apiKey, shop, server } = useLoaderData<typeof loader>();
+  useEffect(() => {
+    globalStore.shop = shop as string;
+    globalStore.server = server as string;
+  }, []);
   return (
     <AppProvider isEmbeddedApp apiKey={apiKey}>
       <NavMenu>
@@ -270,6 +335,7 @@ export default function App() {
           Home
         </Link>
         <Link to="/app/management">Image Manage</Link>
+        <Link to="/app/alt_management">Alt Manage</Link>
         <Link to="/app/pricing">Pricing</Link>
       </NavMenu>
       <Outlet />

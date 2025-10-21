@@ -30,12 +30,11 @@ import {
   Space,
   Grid,
 } from "antd";
-import { BlockStack, Page } from "@shopify/polaris";
+import { BlockStack, Page, Icon} from "@shopify/polaris";
 // import { useLocation } from "@remix-run/react";
 import ScrollNotice from "~/components/ScrollNotice";
 import { useTranslation } from "react-i18next";
-import { Icon } from "@shopify/polaris";
-import { ArrowLeftIcon } from "@shopify/polaris-icons";
+// import { ArrowLeftIcon } from "@shopify/polaris-icons";
 import { useNavigate, useFetcher } from "@remix-run/react";
 import useReport from "scripts/eventReport";
 // import TranslatedIcon from "app/components/translateIcon";
@@ -201,7 +200,7 @@ const TranslationDashboard = () => {
       publishLanguage: false,
     },
   });
-//   const rows = useSelector((state: RootState) => state.languageTableData.rows);
+  //   const rows = useSelector((state: RootState) => state.languageTableData.rows);
   useEffect(() => {
     if (reportData && reportData.totalScore !== null) {
       localStorage.setItem("reportData", JSON.stringify(reportData));
@@ -357,7 +356,7 @@ const TranslationDashboard = () => {
     <Page>
       <ScrollNotice
         text={t(
-          "Welcome to our app! If you have any questions, feel free to email us at support@ciwi.ai, and we will respond as soon as possible."
+          "Welcome to our app! If you have any questions, feel free to email us at support@ciwi.ai, and we will respond as soon as possible.",
         )}
       />
       {/* 头部卡片 - 翻译质量得分 */}
@@ -379,7 +378,7 @@ const TranslationDashboard = () => {
               onClick={handleNavigate}
               style={{ padding: "4px" }}
             >
-              <Icon source={ArrowLeftIcon} tone="base" />
+              {/* <Icon source={ArrowLeftIcon} tone="base" /> */}
             </Button>
             <Title
               style={{
@@ -488,9 +487,7 @@ const TranslationDashboard = () => {
                       ) : (
                         <>
                           <span style={{ color: "red", fontWeight: "bold" }}>
-                            {
-                              reportIntroduction.notTransLanguage
-                            }
+                            {reportIntroduction.notTransLanguage}
                           </span>{" "}
                         </>
                       )}
@@ -514,219 +511,6 @@ const TranslationDashboard = () => {
                 </div>
               </Col>
             </Row>
-          )}
-        </Card>
-
-        {/* 语言翻译情况 */}
-        {/* <Card
-          title={t("Language Translation Status")}
-          styles={{
-            header: { borderBottom: "none" },
-            body: {
-              padding: "12px 24px",
-            },
-          }}
-          extra={
-            languageStatus ? (
-              <Skeleton.Button active />
-            ) : (
-              reportData.language.length > 0 && (
-                <Button
-                  onClick={() => {
-                    navigate("/app/language");
-                    reportClick("transate_report_deoptimization");
-                  }}
-                >
-                  {t("Improve")}
-                </Button>
-              )
-            )
-          }
-        >
-          {languageStatus ? (
-            <BlockStack>
-              <Skeleton.Node
-                active
-                style={{ height: 100, width: "100%" }}
-              ></Skeleton.Node>
-            </BlockStack>
-          ) : (
-            <>
-              {reportData.language.length > 0 ? (
-                <Row gutter={16}>
-                  {reportData.language.map((item: any, index: number) => (
-                    <Col
-                      key={index}
-                      sm={24}
-                      md={12}
-                      lg={8}
-                      xs={24}
-                      style={{ padding: "20px" }}
-                    >
-                      <Flex justify="space-between">
-                        <Text>{item[0]}</Text>
-                        <TranslatedIcon status={item[1] === 1 ? 1 : 0} />
-                      </Flex>
-                    </Col>
-                  ))}
-                </Row>
-              ) : (
-                <Flex
-                  vertical
-                  justify="center"
-                  align="center"
-                  style={{ padding: "40px 0" }}
-                >
-                  <Empty
-                    description={
-                      <Text type="secondary" style={{ fontSize: 16 }}>
-                        {t("You haven't added any languages yet.")}
-                      </Text>
-                    }
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  />
-                  <Button
-                    type="primary"
-                    size="middle"
-                    style={{ marginTop: 16 }}
-                    onClick={() => navigate("/app/language")}
-                  >
-                    {t("Manage Languages")}
-                  </Button>
-                </Flex>
-              )}
-            </>
-          )}
-        </Card> */}
-
-        {/* 翻译待办事项 */}
-        <Card
-          title={t("Recommendations to Improve Quality")}
-          style={{ marginBottom: 20 }}
-          styles={{
-            header: { borderBottom: "none" },
-            body: {
-              padding: "12px 24px",
-            },
-          }}
-        >
-          {realTimeIsLoading ? (
-            <BlockStack>
-              <Skeleton.Node
-                active
-                style={{ height: 200, width: "100%" }}
-              ></Skeleton.Node>
-            </BlockStack>
-          ) : (
-            <Flex vertical gap="small">
-              <Flex justify="space-between" align="center">
-                <Flex vertical gap={4}>
-                  <Text strong>{t("Glossary")}</Text>
-                  <Text>
-                    {t(
-                      "Define key terms to keep translations consistent with your brand.",
-                    )}
-                  </Text>
-                </Flex>
-
-                {reportData.realTimeBtns.glossary ? (
-                  <Text style={{ padding: "15px", color: "#007F61" }}>
-                    {t("Enabled")}
-                  </Text>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      navigate("/app/glossary");
-                      reportClick("translate_report_open_termbase");
-                    }}
-                    // style={{ marginTop: 8 }}
-                  >
-                    {t("Enable")}
-                  </Button>
-                )}
-              </Flex>
-              <Divider style={{ margin: "0" }} />
-              <Flex justify="space-between" align="center">
-                <Flex vertical gap={4}>
-                  <Text strong>{t("Language & Currency Switcher")}</Text>
-                  <Text>
-                    {t(
-                      "Enable automatic switching to match visitors’ language and currency.",
-                    )}
-                  </Text>
-                </Flex>
-
-                {reportData.realTimeBtns.switch ? (
-                  <Text style={{ padding: "15px", color: "#007F61" }}>
-                    {t("Enabled")}
-                  </Text>
-                ) : (
-                  <Button
-                    // style={{ marginTop: 8 }}
-                    onClick={() => {
-                      navigate("/app/switcher");
-                      reportClick("translate_report_open_switcher");
-                    }}
-                  >
-                    {t("Enable")}
-                  </Button>
-                )}
-              </Flex>
-              <Divider style={{ margin: "0" }} />
-              <Flex justify="space-between" align="center">
-                <Flex vertical gap={4}>
-                  <Text strong>{t("Published Languages")}</Text>
-                  <Text>
-                    {t(
-                      "Make your translations live so customers can see them.",
-                    )}
-                  </Text>
-                </Flex>
-
-                {reportData.realTimeBtns.publishLanguage ? (
-                  <Text style={{ padding: "15px", color: "#007F61" }}>
-                    {t("Enabled")}
-                  </Text>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      navigate("/app/language");
-                      reportClick("translate_report_manage_language");
-                    }}
-                    // style={{ marginTop: 8 }}
-                  >
-                    {t("Enable")}
-                  </Button>
-                )}
-              </Flex>
-              <Divider style={{ margin: "0" }} />
-              <Flex justify="space-between" align="center">
-                <Flex vertical gap={4}>
-                  <Text strong>{t("Auto-Translation")}</Text>
-                  <Text>
-                    {t(
-                      "Turn on automatic translation to keep your store updated in real time.",
-                    )}
-                  </Text>
-                </Flex>
-
-                {reportData.realTimeBtns.autoTranslate ? (
-                  <Text style={{ padding: "15px", color: "#007F61" }}>
-                    {t("Enabled")}
-                  </Text>
-                ) : (
-                  <Button
-                    onClick={() => {
-                      navigate("/app/language");
-                      reportClick("translate_report_manage_auto_translate");
-                    }}
-                    // style={{ marginTop: 8 }}
-                  >
-                    {t("Enable")}
-                  </Button>
-                )}
-              </Flex>
-            </Flex>
           )}
         </Card>
       </Space>

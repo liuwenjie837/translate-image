@@ -136,58 +136,6 @@ export function ErrorBoundary() {
 }
 
 export default function App() {
-  const fetcher = useFetcher<any>();
-
-  // 从 loader 数据中获取国际化语言代码
-  useEffect(() => {
-    // GTM 初始化脚本
-    const script = document.createElement("script");
-    script.innerHTML = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-      })(window,document,'script','dataLayer','GTM-NVPT5XDV')`;
-    document.head.appendChild(script);
-
-    const gaInitScript = document.createElement("script");
-    gaInitScript.innerHTML = `
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){window.dataLayer.push(arguments)}
-      gtag('js', new Date());
-      gtag('config', 'G-F1BN24YVJN');
-    `;
-    document.head.appendChild(gaInitScript);
-
-    const gtagScript = document.createElement("script");
-    gtagScript.innerHTML = `
-      gtag('event', 'conversion', {
-        'send_to': 'AW-11460630366/7Dj1CNvO4cYaEN6u7dgq',
-        'value': 1.0,
-        'currency': 'USD'
-      });
-    `;
-    document.head.appendChild(gtagScript);
-  }, []);
-
-  useEffect(() => {
-    const callback = async (metrics: any) => {
-      const data = JSON.stringify(metrics);
-      fetcher.submit(
-        {
-          metrics: data,
-        },
-        {
-          method: "POST",
-          action: "/web-vitals-metrics",
-        },
-      );
-    };
-    // 确保 shopify 对象存在再调用
-    if (typeof shopify !== "undefined" && shopify?.webVitals?.onReport) {
-      shopify?.webVitals?.onReport(callback);
-    }
-  }, []);
-
   return (
     // 使用 Redux Provider 包装整个应用（用于状态管理，必须）,删除后很多功能无法使用
     <>
@@ -195,21 +143,21 @@ export default function App() {
         
       </Provider> */}
       <Head />
-        <noscript>
-          <iframe
-            src="https://www.googletagmanager.com/ns.html?id=GTM-NVPT5XDV"
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          ></iframe>
-        </noscript>
-        <Outlet />
-        <ScrollRestoration />
-        <Scripts />
-        <script
-          src="//code.tidio.co/inl4rrmds8vvbldv1k6gyc2nzxongl3p.js"
-          async
-        ></script>
+      <noscript>
+        <iframe
+          src="https://www.googletagmanager.com/ns.html?id=GTM-NVPT5XDV"
+          height="0"
+          width="0"
+          style={{ display: "none", visibility: "hidden" }}
+        ></iframe>
+      </noscript>
+      <Outlet />
+      <ScrollRestoration />
+      <Scripts />
+      <script
+        src="//code.tidio.co/inl4rrmds8vvbldv1k6gyc2nzxongl3p.js"
+        async
+      ></script>
     </>
   );
 }
